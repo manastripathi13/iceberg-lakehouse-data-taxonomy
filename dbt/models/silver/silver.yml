@@ -1,0 +1,54 @@
+version: 2
+models:
+  - name: stg_crm__accounts
+    description: CRM accounts, latest version per record, with ISO country codes and a name match key.
+    config: {meta: {domain: crm, data_owner: revops-data@company.example, pii: low}}
+    columns:
+      - name: account_id
+        data_tests: [unique, not_null]
+      - name: country_code
+        description: ISO-2 code standardised from free-text BillingCountry.
+        data_tests: [not_null]
+  - name: stg_crm__opportunities
+    description: CRM opportunities (deals), latest version per record.
+    config: {meta: {domain: crm, data_owner: revops-data@company.example}}
+    columns:
+      - name: opportunity_id
+        data_tests: [unique, not_null]
+      - name: stage_name
+        data_tests:
+          - relationships:
+              arguments: {to: ref('ref_opportunity_stages'), field: stage_name}
+  - name: stg_billing__invoices
+    description: Invoices typed and de-duplicated, local currency, tax defaulted to 0 before the billing upgrade.
+    config: {meta: {domain: billing, data_owner: finance-data@company.example}}
+    columns:
+      - name: invoice_id
+        data_tests: [unique, not_null]
+  - name: stg_billing__payments
+    description: Payments typed and de-duplicated.
+    config: {meta: {domain: billing, data_owner: finance-data@company.example}}
+    columns:
+      - name: payment_id
+        data_tests: [unique, not_null]
+      - name: invoice_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('stg_billing__invoices'), field: invoice_id}
+  - name: stg_finance__fx_rates
+    description: Monthly USD conversion rates per currency.
+    config: {meta: {domain: finance, data_owner: finance-data@company.example}}
+  - name: int_account_master_map
+    description: Maps every CRM account record to its master (golden) account. Basis of account de-duplication.
+    config: {meta: {domain: crm, data_owner: revops-data@company.example}}
+    columns:
+      - name: account_id
+        data_tests: [unique, not_null]
+      - name: master_account_id
+        data_tests: [not_null]
+
+seeds:
+  - name: ref_country_codes
+    description: Reference mapping from free-text country values to ISO-2 codes.
+  - name: ref_opportunity_stages
+    description: Sales stages with win probability used for weighted pipeline.

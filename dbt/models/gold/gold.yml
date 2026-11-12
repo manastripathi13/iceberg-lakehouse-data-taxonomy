@@ -1,0 +1,50 @@
+version: 2
+models:
+  - name: dim_account
+    description: One row per real customer (golden record) after merging duplicate CRM records.
+    config: {meta: {domain: crm, data_owner: revops-data@company.example, pii: low}}
+    columns:
+      - name: master_account_id
+        data_tests: [unique, not_null]
+  - name: fct_invoices
+    description: One row per invoice in USD, linked to master account and payment status.
+    config: {meta: {domain: billing, data_owner: finance-data@company.example}}
+    columns:
+      - name: invoice_id
+        data_tests: [unique, not_null]
+      - name: master_account_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_account'), field: master_account_id}
+      - name: amount_usd
+        data_tests: [not_null]
+      - name: payment_status
+        data_tests:
+          - accepted_values:
+              arguments: {values: [paid, overdue, open]}
+  - name: fct_opportunities
+    description: One row per deal with stage probability and weighted value.
+    config: {meta: {domain: crm, data_owner: revops-data@company.example}}
+    columns:
+      - name: opportunity_id
+        data_tests: [unique, not_null]
+  - name: rpt_mrr_movements
+    description: Monthly recurring revenue per customer with movement type (new, expansion, contraction, churn, reactivation).
+    config: {meta: {domain: revenue, data_owner: finance-data@company.example}}
+    columns:
+      - name: movement_type
+        data_tests:
+          - accepted_values:
+              arguments: {values: [new, expansion, contraction, churn, reactivation, retained]}
+  - name: rpt_revenue_monthly
+    description: Monthly MRR/ARR bridge, paying customers, invoiced and collected cash.
+    config: {meta: {domain: revenue, data_owner: finance-data@company.example}}
+    columns:
+      - name: revenue_month
+        data_tests: [unique, not_null]
+  - name: rpt_ar_aging
+    description: Unpaid invoices by days past due and segment, as of the reporting date.
+    config: {meta: {domain: billing, data_owner: finance-data@company.example}}
+  - name: rpt_pipeline_by_segment
+    description: Open and weighted pipeline, win rate, deal size and sales cycle by segment.
+    config: {meta: {domain: crm, data_owner: revops-data@company.example}}

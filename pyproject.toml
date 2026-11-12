@@ -1,0 +1,15 @@
+[project]
+name = "iceberg-lakehouse-data-taxonomy"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.44.1",
+    "dbt-trino>=1.11.0",
+    "faker>=40.54.0",
+    "pandas>=3.1.1",
+    "pyspark>=4.0,<4.1",
+    "pytest>=9.2.0",
+    "pyyaml>=6.0.3",
+    "requests>=2.34.2",
+    "trino>=0.340.0",
+]

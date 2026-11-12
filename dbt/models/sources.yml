@@ -1,0 +1,11 @@
+version: 2
+sources:
+  - name: bronze
+    description: Raw tables loaded by Spark through write-audit-publish (see ingestion/).
+    schema: bronze
+    tables:
+      - name: crm_accounts
+      - name: crm_opportunities
+      - name: billing_invoices
+      - name: billing_payments
+      - name: finance_fx_rates

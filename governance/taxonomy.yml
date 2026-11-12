@@ -1,0 +1,35 @@
+# Data taxonomy: the agreed rules for naming, layering and describing every table.
+# `governance/check_taxonomy.py` enforces these rules against the live catalog
+# and the ingestion audit refuses to publish a batch that breaks them.
+
+layers:
+  bronze:
+    purpose: Raw data exactly as it arrived from the source system, plus load metadata.
+    name_pattern: '^(crm|billing|finance)_[a-z0-9_]+$'          # <domain>_<entity>
+    required_columns: [_batch_id, _ingested_at, _source_file]
+  silver:
+    purpose: Cleaned, typed, standardised and de-duplicated data. One row per business entity.
+    name_pattern: '^(stg_(crm|billing|finance)__[a-z0-9_]+|int_[a-z0-9_]+|dim_[a-z0-9_]+|ref_[a-z0-9_]+)$'   # ref_ = reference data
+  gold:
+    purpose: Business-ready facts, dimensions and reports for BI and finance.
+    name_pattern: '^(fct|dim|rpt|agg)_[a-z0-9_]+$'
+
+domains:
+  crm:
+    owner: revops-data@company.example
+    systems: [Salesforce]
+    entities: [accounts, opportunities]
+  billing:
+    owner: finance-data@company.example
+    systems: [ERP billing API]
+    entities: [invoices, payments]
+  finance:
+    owner: finance-data@company.example
+    systems: [Treasury]
+    entities: [fx_rates]
+
+# Every table must carry these Iceberg table properties.
+required_table_properties: [data_owner, domain, layer, description]
+
+# Allowed values for the `pii` property.
+pii_levels: [none, low, high]

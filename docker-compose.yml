@@ -1,0 +1,38 @@
+# Local lakehouse:
+#   SeaweedFS (S3 API)  - object storage, stands in for Google Cloud Storage
+#   Nessie              - Iceberg catalog with Git-like branches (Iceberg REST endpoint)
+#   Trino               - SQL query engine over the Iceberg tables
+services:
+  storage:
+    image: chrislusf/seaweedfs:latest
+    command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data -master.volumeSizeLimitMB=256
+    ports: ["8333:8333"]
+    volumes:
+      - ./docker/s3.json:/etc/seaweedfs/s3.json:ro
+      - storage-data:/data
+
+  nessie:
+    image: ghcr.io/projectnessie/nessie:0.106.1
+    depends_on: [storage]
+    ports: ["19120:19120"]
+    environment:
+      nessie.version.store.type: IN_MEMORY
+      nessie.catalog.default-warehouse: warehouse
+      nessie.catalog.warehouses.warehouse.location: s3://lakehouse/warehouse
+      nessie.catalog.service.s3.default-options.endpoint: http://storage:8333/
+      nessie.catalog.service.s3.default-options.external-endpoint: http://localhost:8333/
+      nessie.catalog.service.s3.default-options.path-style-access: "true"
+      nessie.catalog.service.s3.default-options.region: us-east-1
+      nessie.catalog.service.s3.default-options.access-key: urn:nessie-secret:quarkus:lake.s3
+      lake.s3.name: lakeadmin
+      lake.s3.secret: lakeadmin-secret
+
+  trino:
+    image: trinodb/trino:479
+    depends_on: [nessie]
+    ports: ["8080:8080"]
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog:ro
+
+volumes:
+  storage-data:

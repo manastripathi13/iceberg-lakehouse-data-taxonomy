@@ -1,0 +1,7 @@
+stage_name,stage_order,win_probability,is_open,is_won
+Prospecting,1,0.10,true,false
+Qualification,2,0.20,true,false
+Proposal,3,0.40,true,false
+Negotiation,4,0.70,true,false
+Closed Won,5,1.00,false,true
+Closed Lost,6,0.00,false,false

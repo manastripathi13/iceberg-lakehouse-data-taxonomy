@@ -1,0 +1,12 @@
+revenue_lakehouse:
+  target: local
+  outputs:
+    local:
+      type: trino
+      method: none
+      user: dbt
+      host: "{{ env_var('TRINO_HOST', 'localhost') }}"
+      port: 8080
+      database: lakehouse      # Trino catalog = Iceberg tables in Nessie
+      schema: silver
+      threads: 4

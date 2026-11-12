@@ -1,0 +1,25 @@
+name: revenue_lakehouse
+version: "1.0.0"
+config-version: 2
+profile: revenue_lakehouse
+
+vars:
+  as_of_date: "2026-06-30"     # reporting date for AR aging and "open" status
+
+models:
+  revenue_lakehouse:
+    +materialized: table
+    +on_table_exists: replace    # CREATE OR REPLACE keeps Iceberg snapshot history (time travel)
+    +post-hook: "{{ apply_taxonomy_properties() }}"
+    silver:
+      +schema: silver
+      +meta: {layer: silver}
+    gold:
+      +schema: gold
+      +meta: {layer: gold}
+
+seeds:
+  revenue_lakehouse:
+    +schema: silver
+    +post-hook: "{{ apply_taxonomy_properties() }}"
+    +meta: {layer: silver, domain: crm, data_owner: revops-data@company.example}
