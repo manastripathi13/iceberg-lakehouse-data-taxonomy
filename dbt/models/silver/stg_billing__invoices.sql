@@ -1,3 +1,6 @@
+{#- tax_amount only exists once the billing system upgrade lands (batch_002).
+    Check the live Bronze schema so this model works before and after that schema change. -#}
+{%- set bronze_cols = adapter.get_columns_in_relation(source('bronze', 'billing_invoices')) | map(attribute='name') | map('lower') | list -%}
 with latest as (
     select *, row_number() over (partition by invoice_id order by _ingested_at desc) as rn
     from {{ source('bronze', 'billing_invoices') }}
@@ -12,7 +15,7 @@ select
     cast(period_end as date)                      as period_end,
     currency,
     cast(amount as decimal(18, 2))                as amount_local,
-    cast(coalesce(tax_amount, 0) as decimal(18, 2)) as tax_local,  -- column only exists from batch_002 on
+    cast({{ 'coalesce(tax_amount, 0)' if 'tax_amount' in bronze_cols else '0' }} as decimal(18, 2)) as tax_local,
     status
 from latest
 where rn = 1

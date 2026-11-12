@@ -33,7 +33,43 @@ Sample Gold output (`gold.rpt_revenue_monthly`, synthetic data):
 | 2026-05 | $905K | $10.9M | $43K | $25K | -$30K | -$2K | 115 |
 | 2026-06 | $942K | $11.3M | $37K | $27K | -$16K | -$11K | 121 |
 
-## Run it locally
+## Run it with Airflow (the main way)
+
+All pipeline runs go through Airflow. The DAGs live in [`airflow/dags/`](airflow/dags/):
+
+| DAG | Schedule | Tasks |
+|---|---|---|
+| `revenue_lakehouse_daily` | `@daily`, 2026-07-01 to 2026-07-03 with catch-up | `start_services` → `ensure_source_files` → `ingest_bronze_wap` → `dbt_build_silver_gold` → `taxonomy_check` |
+| `revenue_lakehouse_maintenance` | manual | `time_travel_and_rollback` → `benchmark_bronze_vs_gold` |
+
+One daily run loads one batch. Unpausing `revenue_lakehouse_daily` plays the three days in order:
+
+| Run | Batch | Result in Airflow |
+|---|---|---|
+| 2026-07-01 | `batch_001` | all green: published to `main` |
+| 2026-07-02 | `batch_002` | all green: published, `tax_amount` column added without downtime |
+| 2026-07-03 | `batch_003` | `ingest_bronze_wap` **red**: audit found 5 null IDs and 5 negative amounts, branch kept, `main` untouched; dbt and taxonomy marked `upstream_failed` so nothing downstream sees bad data |
+
+Trigger it manually with `batch_id` to load a specific batch.
+
+**Start a local Airflow 3 pointed at this repo's DAGs** (web UI on http://localhost:8081, no login):
+
+```bash
+uv venv --python 3.12 ~/airflow-venv
+curl -sO https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.12.txt
+uv pip install --python ~/airflow-venv/bin/python -c constraints-3.12.txt apache-airflow==3.2.2 apache-airflow-providers-standard
+
+export AIRFLOW_HOME=~/airflow AIRFLOW__CORE__DAGS_FOLDER="$PWD/airflow/dags" AIRFLOW__CORE__LOAD_EXAMPLES=False \
+       AIRFLOW__API__PORT=8081 AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS=True \
+       AIRFLOW__CORE__EXECUTION_API_SERVER_URL=http://localhost:8081/execution/ PATH="$HOME/airflow-venv/bin:$PATH"
+airflow standalone
+```
+
+Tasks call this repo's own `uv` environment (`uv run ...`), so Airflow and the project keep separate dependencies. The constraints file pins Airflow's dependencies to the versions it was tested with; without it a newer Pydantic breaks Airflow 3.2's API server.
+
+`start_services` brings up storage, Nessie and Trino with Docker, so Docker Desktop must be running.
+
+## Run it without Airflow
 
 Requirements: Docker Desktop, [uv](https://docs.astral.sh/uv/), Java 17+ (for Spark).
 
@@ -153,7 +189,8 @@ ingestion/spark_session.py           Spark + Iceberg + Nessie configuration
 governance/taxonomy.yml              the data taxonomy rulebook
 governance/check_taxonomy.py         taxonomy enforcement + data catalog generator
 dbt/                                 Silver + Gold models, seeds, tests (dbt-trino)
-airflow/dags/                        Cloud Composer DAG
+airflow/dags/                        Airflow DAGs: revenue_lakehouse_daily (WAP + dbt + taxonomy), revenue_lakehouse_maintenance
+scripts/start_services.sh            start storage, Nessie and Trino (used by the DAG)
 scripts/run_demo.sh                  one-command local demo
 scripts/demo_time_travel.py          time travel + rollback demo
 scripts/benchmark_queries.py         Bronze vs Gold query benchmark
