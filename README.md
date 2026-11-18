@@ -4,6 +4,8 @@ A lakehouse for a B2B travel-tech SaaS company's revenue data. CRM (Salesforce-s
 
 **Stack:** Apache Iceberg · Trino · GCS (S3-compatible storage locally) · Cloud Composer (Airflow) · dbt · Project Nessie · PySpark
 
+**System design:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the architecture diagrams and a step-by-step walkthrough of the design, decisions and failure handling.
+
 ```
  CRM (Salesforce CSV) ┐                        ┌──────────── Nessie catalog (branches, tags, commits) ───────────┐
  Billing (ERP JSON)   ├─► landing ─► PySpark ─►│ branch ingest_<batch>: BRONZE ─► audit ─► merge to main + tag   │
